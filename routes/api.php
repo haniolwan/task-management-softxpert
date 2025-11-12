@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 
@@ -10,4 +9,9 @@ Route::middleware(['throttle:login'])->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-// Route::middleware(['auth:sanctum', 'role:manager'])->get('/tasks', function () {});
+
+Route::middleware(['throttle:api'])->group(function () {
+    Route::post('/tasks', function () {
+        return "Hello world";
+    });
+});
