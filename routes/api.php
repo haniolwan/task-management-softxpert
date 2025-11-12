@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\TaskController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -10,8 +11,11 @@ Route::middleware(['throttle:login'])->group(function () {
 });
 
 
-Route::middleware(['throttle:api'])->group(function () {
-    Route::post('/tasks', function () {
-        return "Hello world";
-    });
+Route::middleware(['auth:sanctum', 'role:manager', 'throttle:api'])->group(function () {});
+
+
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+    Route::middleware(['role:manager'])->post('/tasks', [TaskController::class, 'store']);
+    Route::get('/tasks', [TaskController::class, 'index']);
+    Route::patch('/tasks/{task}', [TaskController::class, 'update']);
 });
