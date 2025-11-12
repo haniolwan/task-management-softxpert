@@ -37,12 +37,7 @@ class TaskController extends Controller
         return response()->json([
             'message' => 'Tasks retrieved successfully',
             'data' => $tasks->items(),
-            'pagination' => [
-                'total' => $tasks->total(),
-                'per_page' => $tasks->perPage(),
-                'current_page' => $tasks->currentPage(),
-                'last_page' => $tasks->lastPage(),
-            ]
+            'pagination' => $tasks->toArray(),
         ], 200);
     }
 
@@ -67,15 +62,14 @@ class TaskController extends Controller
     {
         $validated = $request->validated();
 
-        if (!auth()->user()->hasRole('manager')) {
-            $validated = ['status' => $validated['status'] ?? $task->status];
-
-            if ($task->assignee_id !== auth()->id()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
+        $authUser = auth()->user();
+        if ($authUser->can('update tasks')) {
+            $task->update(array_filter($validated, fn($value) => !is_null($value)));
+        } else if ($authUser->can('update task status')) {
+            $task->update(['status' => $validated['status'] ?? $task->status]);
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
-
-        $task->update(array_filter($validated, fn($value) => !is_null($value)));
 
         return response()->json([
             'message' => 'Task successfully updated',

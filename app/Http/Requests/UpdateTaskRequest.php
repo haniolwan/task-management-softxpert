@@ -27,8 +27,8 @@ class UpdateTaskRequest extends FormRequest
             'title' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
             'assignee_id' => 'sometimes|exists:users,id',
-            'status' => ['nullable', new Enum(TaskStatus::class)],
-            'due_date' => 'sometimes'
+            'status' => ['sometimes', 'nullable', new Enum(TaskStatus::class)],
+            'due_date' => 'sometimes|date|after_or_equal:today'
         ];
     }
 }

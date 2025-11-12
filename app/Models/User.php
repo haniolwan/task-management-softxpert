@@ -13,7 +13,6 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasRoles, HasFactory, Notifiable, HasApiTokens;
 
-    protected $guard_name = 'web';
     /**
      * The attributes that are mass assignable.
      *
@@ -35,6 +34,7 @@ class User extends Authenticatable
         'remember_token',
         'created_at',
         'updated_at',
+        'roles'
     ];
 
     /**
