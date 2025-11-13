@@ -29,6 +29,8 @@ class StoreTaskRequest extends FormRequest
             'assignee_id' => 'required|exists:users,id',
             'due_date' => 'nullable|date|after:today',
             'status' => ['nullable', new Enum(TaskStatus::class)],
+            'dependency_ids' => 'sometimes|array',
+            'dependency_ids.*' => 'exists:tasks,id'
         ];
     }
 }

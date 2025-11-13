@@ -9,6 +9,7 @@ class Task extends Model
     protected $hidden = [
         'created_at',
         'updated_at',
+        'pivot'
     ];
 
     protected $fillable = [
@@ -18,4 +19,11 @@ class Task extends Model
         'due_date',
         'status',
     ];
+
+
+    public function dependencies()
+    {
+        return $this->belongsToMany(Task::class, 'tasks_dependencies', 'task_id', 'depends_on_task_id')->withPivot([]);
+    }
+
 }

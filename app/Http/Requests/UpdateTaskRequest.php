@@ -28,7 +28,9 @@ class UpdateTaskRequest extends FormRequest
             'description' => 'sometimes|string',
             'assignee_id' => 'sometimes|exists:users,id',
             'status' => ['sometimes', 'nullable', new Enum(TaskStatus::class)],
-            'due_date' => 'sometimes|date|after_or_equal:today'
+            'due_date' => 'sometimes|date|after_or_equal:today',
+            'dependency_ids' => 'sometimes|array',
+            'dependency_ids.*' => 'exists:tasks,id'
         ];
     }
 }

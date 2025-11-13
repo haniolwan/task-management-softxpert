@@ -30,14 +30,13 @@ class TaskController extends Controller
             }
         }
 
-
         $page = (int) $request->input('per_page', 10);
-        $tasks = $query->paginate($page);
+
+        $tasks = $query->with(['dependencies'])->paginate($page);
 
         return response()->json([
             'message' => 'Tasks retrieved successfully',
-            'data' => $tasks->items(),
-            'pagination' => $tasks->toArray(),
+            'data' => $tasks->items()
         ], 200);
     }
 
@@ -52,20 +51,83 @@ class TaskController extends Controller
             'status' => $request->status ?? 'pending'
         ]);
 
+        if (!empty($request->dependency_ids)) {
+            $task->dependencies()->syncWithoutDetaching($request->dependency_ids);
+        }
+
         return response()->json([
             'message' => 'Task successfully created',
-            'task' => $task,
+            'task' => $task->load('dependencies'),
         ], 201);
     }
+
+    private function canAddDependency(Task $task, int $taskId): bool
+    {
+        $new_dependency = Task::find($taskId);
+        if (!$new_dependency) {
+            return false;
+        }
+
+        $all_visited_children = $this->getAllDependencies($new_dependency);
+
+        return !in_array($task->id, $all_visited_children);
+    }
+
+    private function getAllDependencies(Task $task, &$visited = [])
+    {
+        foreach ($task->dependencies as $dependency) {
+            if ($dependency && !in_array($dependency->id, $visited)) {
+                $visited[] = $dependency->id;
+                $this->getAllDependencies($dependency, $visited);
+            }
+        }
+        return $visited;
+    }
+
 
     public function update(UpdateTaskRequest $request, Task $task)
     {
         $validated = $request->validated();
-
         $authUser = auth()->user();
+        $task->load('dependencies');
+
         if ($authUser->can('update tasks')) {
-            $task->update(array_filter($validated, fn($value) => !is_null($value)));
-        } else if ($authUser->can('update task status')) {
+
+            $fields = array_filter($validated, fn($v) => !is_null($v) && $v !== []);
+            unset($fields['dependency_ids']);
+            $task->update($fields);
+
+
+            $dependencyIds = $validated['dependency_ids'] ?? [];
+
+            if (!empty($dependencyIds)) {
+                $valid_task_ids = [];
+                foreach ($dependencyIds as $id) {
+                    $id = (int) $id;
+
+                    if (!$this->canAddDependency($task, $id)) {
+                        return response()->json([
+                            'message' => "Cannot add task #{$id} due to circular dependency."
+                        ], 400);
+                    }
+
+                    $valid_task_ids[] = $id;
+                }
+                $task->dependencies()->sync($valid_task_ids);
+            }
+        } elseif ($authUser->can('update task status')) {
+            $status = $validated['status'] ?? null;
+            if ($status === 'completed') {
+
+                foreach ($task->dependencies as $dependency) {
+                    if ($dependency->status !== 'completed') {
+                        return response()->json([
+                            'message' => "Cannot set task '{$task->title}' to completed because dependency '{$dependency->title}' is not completed yet."
+                        ], 400);
+                    }
+                }
+            }
+
             $task->update(['status' => $validated['status'] ?? $task->status]);
         } else {
             return response()->json(['message' => 'Unauthorized'], 403);
@@ -73,7 +135,8 @@ class TaskController extends Controller
 
         return response()->json([
             'message' => 'Task successfully updated',
-            'task' => $task->refresh(),
+            'task' => $task->load('dependencies'),
         ], 200);
     }
+
 }
