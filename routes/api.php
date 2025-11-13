@@ -11,9 +11,6 @@ Route::middleware(['throttle:login'])->group(function () {
 });
 
 
-Route::middleware(['auth:sanctum', 'role:manager', 'throttle:api'])->group(function () {});
-
-
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::middleware(['role:manager'])->post('/tasks', [TaskController::class, 'store']);
     Route::get('/tasks', [TaskController::class, 'index']);
