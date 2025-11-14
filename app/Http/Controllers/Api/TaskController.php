@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ListTaskRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
+use App\Http\Traits\ApiResponserTrait;
 use App\Models\Task;
 
 class TaskController extends Controller
 {
+    use ApiResponserTrait;
     public function index(ListTaskRequest $request)
     {
         $query = Task::query();
@@ -34,10 +36,7 @@ class TaskController extends Controller
 
         $tasks = $query->with(['dependencies'])->paginate($page);
 
-        return response()->json([
-            'message' => 'Tasks retrieved successfully',
-            'data' => $tasks->items()
-        ], 200);
+        return $this->success($tasks->items(), 'Tasks retrieved successfully');
     }
 
     public function store(StoreTaskRequest $request)
@@ -55,10 +54,7 @@ class TaskController extends Controller
             $task->dependencies()->syncWithoutDetaching($request->dependency_ids);
         }
 
-        return response()->json([
-            'message' => 'Task successfully created',
-            'task' => $task->load('dependencies'),
-        ], 201);
+        return $this->success($task->load('dependencies'), 'Task successfully created', 201);
     }
 
     private function canAddDependency(Task $task, int $taskId): bool
@@ -84,59 +80,52 @@ class TaskController extends Controller
         return $visited;
     }
 
+    public function updateStatus(UpdateTaskRequest $request, Task $task)
+    {
+        $validated = $request->validated();
+        $status = $validated['status'] ?? null;
+        if ($status === 'completed') {
+            foreach ($task->dependencies as $dependency) {
+                if ($dependency->status !== 'completed') {
+                    $this->error('Cannot set task' .$task->title. ' to completed because dependency '.$dependency->title.' is not completed yet.');
+                }
+            }
+        }
+
+        $task->update(['status' => $validated['status'] ?? $task->status]);
+
+        return $this->success($task->load('dependencies'), 'Task status successfully updated');
+    }
 
     public function update(UpdateTaskRequest $request, Task $task)
     {
         $validated = $request->validated();
-        $authUser = auth()->user();
         $task->load('dependencies');
 
-        if ($authUser->can('update tasks')) {
+        $fields = array_filter($validated, fn($v) => !is_null($v) && $v !== []);
+        unset($fields['dependency_ids']);
+        $task->update($fields);
 
-            $fields = array_filter($validated, fn($v) => !is_null($v) && $v !== []);
-            unset($fields['dependency_ids']);
-            $task->update($fields);
+        $dependencyIds = $validated['dependency_ids'] ?? [];
 
+        if (!empty($dependencyIds)) {
+            $valid_task_ids = [];
+            foreach ($dependencyIds as $id) {
+                $id = (int) $id;
 
-            $dependencyIds = $validated['dependency_ids'] ?? [];
-
-            if (!empty($dependencyIds)) {
-                $valid_task_ids = [];
-                foreach ($dependencyIds as $id) {
-                    $id = (int) $id;
-
-                    if (!$this->canAddDependency($task, $id)) {
-                        return response()->json([
-                            'message' => "Cannot add task #{$id} due to circular dependency."
-                        ], 400);
-                    }
-
-                    $valid_task_ids[] = $id;
+                if (!$this->canAddDependency($task, $id)) {
+                    $this->error($task->title . ' already dependant on selected task');
                 }
-                $task->dependencies()->sync($valid_task_ids);
-            }
-        } elseif ($authUser->can('update task status')) {
-            $status = $validated['status'] ?? null;
-            if ($status === 'completed') {
 
-                foreach ($task->dependencies as $dependency) {
-                    if ($dependency->status !== 'completed') {
-                        return response()->json([
-                            'message' => "Cannot set task '{$task->title}' to completed because dependency '{$dependency->title}' is not completed yet."
-                        ], 400);
-                    }
-                }
+                $valid_task_ids[] = $id;
             }
-
-            $task->update(['status' => $validated['status'] ?? $task->status]);
-        } else {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            $task->dependencies()->sync($valid_task_ids);
         }
 
-        return response()->json([
-            'message' => 'Task successfully updated',
-            'task' => $task->load('dependencies'),
-        ], 200);
+        return $this->success($task->load('dependencies'), 'Task successfully updated');
     }
 
+
+
 }
+

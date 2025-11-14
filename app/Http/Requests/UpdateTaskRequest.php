@@ -18,19 +18,28 @@ class UpdateTaskRequest extends FormRequest
 
     /**
      * Get the validation rules that apply to the request.
-     *
+     * Verify permission to apply which validation
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        return [
-            'title' => 'sometimes|string|max:255',
-            'description' => 'sometimes|string',
-            'assignee_id' => 'sometimes|exists:users,id',
-            'status' => ['sometimes', 'nullable', new Enum(TaskStatus::class)],
-            'due_date' => 'sometimes|date|after_or_equal:today',
-            'dependency_ids' => 'sometimes|array',
-            'dependency_ids.*' => 'exists:tasks,id'
-        ];
+        $user = auth()->user();
+
+        if ($user->can('update tasks')) {
+            return [
+                'title' => 'sometimes|string|max:255',
+                'description' => 'sometimes|string',
+                'assignee_id' => 'sometimes|exists:users,id',
+                'status' => ['sometimes', 'nullable', new Enum(TaskStatus::class)],
+                'due_date' => 'sometimes|date|after_or_equal:today',
+                'dependency_ids' => 'sometimes|array',
+                'dependency_ids.*' => 'exists:tasks,id'
+            ];
+        } elseif ($user->can('update task status')) {
+            return [
+                'status' => ['sometimes', 'nullable', new Enum(TaskStatus::class)],
+            ];
+        }
+        return [];
     }
 }
