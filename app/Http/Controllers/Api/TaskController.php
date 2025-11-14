@@ -58,9 +58,9 @@ class TaskController extends Controller
         $user = auth()->user();
 
         if (!$user->hasRole('manager') && $task->assignee_id != $user->id) {
-            return $this->error('Unauthorized');
+            return $this->error('Forbidden', [], 403);
         }
-        
+
         return $this->success(
             $task->load('dependencies'),
             'Task retrieved successfully'
