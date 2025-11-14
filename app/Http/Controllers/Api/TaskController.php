@@ -108,23 +108,6 @@ class TaskController extends Controller
         return $visited;
     }
 
-    public function updateStatus(UpdateTaskRequest $request, Task $task)
-    {
-        $validated = $request->validated();
-        $status = $validated['status'] ?? null;
-        if ($status === 'completed') {
-            foreach ($task->dependencies as $dependency) {
-                if ($dependency->status !== 'completed') {
-                    $this->error('Cannot set task' . $task->title . ' to completed because dependency ' . $dependency->title . ' is not completed yet.');
-                }
-            }
-        }
-
-        $task->update(['status' => $validated['status'] ?? $task->status]);
-
-        return $this->success($task->load('dependencies'), 'Task status successfully updated');
-    }
-
     public function update(UpdateTaskRequest $request, Task $task)
     {
         $validated = $request->validated();
@@ -139,10 +122,12 @@ class TaskController extends Controller
         if (!empty($dependencyIds)) {
             $valid_task_ids = [];
             foreach ($dependencyIds as $id) {
+                if ($id === $task->id)
+                    continue;
                 $id = (int) $id;
 
                 if (!$this->canAddDependency($task, $id)) {
-                    $this->error($task->title . ' already dependant on selected task');
+                    return $this->error($task->title . ' already dependant on selected task');
                 }
 
                 $valid_task_ids[] = $id;
@@ -151,6 +136,25 @@ class TaskController extends Controller
         }
 
         return $this->success($task->load('dependencies'), 'Task successfully updated');
+    }
+
+    public function updateStatus(UpdateTaskRequest $request, Task $task)
+    {
+        if (auth()->user()->id !== $task->id)
+            return $this->error('Forbidden', [], 403);
+        $validated = $request->validated();
+        $status = $validated['status'] ?? null;
+        if ($status === 'completed') {
+            foreach ($task->dependencies as $dependency) {
+                if ($dependency->status !== 'completed') {
+                    return $this->error('Cannot set task ' . $task->title . ' to completed because its dependencies are not completed yet.');
+                }
+            }
+        }
+
+        $task->update(['status' => $validated['status'] ?? $task->status]);
+
+        return $this->success($task->load('dependencies'), 'Task status successfully updated');
     }
 }
 
