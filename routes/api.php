@@ -16,4 +16,5 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/tasks', [TaskController::class, 'index']);
     Route::patch('/tasks/{task}', [TaskController::class, 'update']);
     Route::middleware(['role:user'])->patch('/tasks/status/{task}', [TaskController::class, 'updateStatus']);
+    Route::get('/tasks/{task}', [TaskController::class, 'show']);
 });
