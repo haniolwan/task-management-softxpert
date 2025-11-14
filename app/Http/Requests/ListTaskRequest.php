@@ -24,6 +24,8 @@ class ListTaskRequest extends FormRequest
         return [
             'status' => 'sometimes|string|max:255',
             'assignee_id' => 'sometimes|exists:users,id',
+            'from'=> 'sometimes|nullable|date',
+            'to'=> 'sometimes|nullable|date',
         ];
     }
 }

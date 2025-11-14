@@ -20,8 +20,11 @@ class TaskController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        if ($request->filled('due_date')) {
-            $query->whereDate('due_date', $request->input('due_date'));
+        if ($request->filled('from') || $request->filled('to')) {
+            $query->whereBetween('due_date', [
+                $request->input('from', '1970-01-01'),
+                $request->input('to', '2100-01-01')
+            ]);
         }
 
         if (!auth()->user()->hasRole('manager')) {
@@ -36,7 +39,17 @@ class TaskController extends Controller
 
         $tasks = $query->with(['dependencies'])->paginate($page);
 
-        return $this->success($tasks->items(), 'Tasks retrieved successfully');
+        return $this->success([
+            'items' => $tasks->items(),
+            'pagination' => [
+                'total' => $tasks->total(),
+                'per_page' => $tasks->perPage(),
+                'current_page' => $tasks->currentPage(),
+                'last_page' => $tasks->lastPage(),
+                'from' => $tasks->firstItem(),
+                'to' => $tasks->lastItem(),
+            ],
+        ], 'Tasks retrieved successfully');
     }
 
     public function store(StoreTaskRequest $request)
@@ -87,7 +100,7 @@ class TaskController extends Controller
         if ($status === 'completed') {
             foreach ($task->dependencies as $dependency) {
                 if ($dependency->status !== 'completed') {
-                    $this->error('Cannot set task' .$task->title. ' to completed because dependency '.$dependency->title.' is not completed yet.');
+                    $this->error('Cannot set task' . $task->title . ' to completed because dependency ' . $dependency->title . ' is not completed yet.');
                 }
             }
         }
@@ -124,8 +137,5 @@ class TaskController extends Controller
 
         return $this->success($task->load('dependencies'), 'Task successfully updated');
     }
-
-
-
 }
 

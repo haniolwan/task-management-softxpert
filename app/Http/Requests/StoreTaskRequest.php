@@ -27,7 +27,7 @@ class StoreTaskRequest extends FormRequest
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'assignee_id' => 'required|exists:users,id',
-            'due_date' => 'nullable|date|after:today',
+            'due_date' => 'nullable|date|after_or_equal:today',
             'status' => ['nullable', new Enum(TaskStatus::class)],
             'dependency_ids' => 'sometimes|array',
             'dependency_ids.*' => 'exists:tasks,id'
