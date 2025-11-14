@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginUserRequest;
 use App\Http\Requests\StoreUserRequest;
-use App\Http\Traits\ApiResponserTrait;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -49,5 +49,24 @@ class AuthController extends Controller
             'role' => $user->getRoleNames()->first(),
             'token' => $token,
         ]);
+    }
+
+    public function logout()
+    {
+        $user = auth()->user();
+
+        if ($user) {
+            $user->currentAccessToken()->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Logged out successfully'
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No authenticated user found'
+        ], 401);
     }
 }
