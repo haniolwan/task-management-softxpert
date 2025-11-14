@@ -69,17 +69,17 @@ class TaskController extends Controller
 
     public function store(StoreTaskRequest $request)
     {
-        $request->validated();
+        $validated = $request->validated();
         $task = Task::create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'assignee_id' => $request->assignee_id,
-            'due_date' => $request->due_date,
-            'status' => $request->status ?? 'pending'
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'assignee_id' => $validated['assignee_id'],
+            'due_date' => $validated['due_date'],
+            'status' => $validated['status'] ?? 'pending'
         ]);
 
-        if (!empty($request->dependency_ids)) {
-            $task->dependencies()->syncWithoutDetaching($request->dependency_ids);
+        if (!empty($validated['dependency_ids'])) {
+            $task->dependencies()->syncWithoutDetaching($validated['dependency_ids']);
         }
 
         return $this->success($task->load('dependencies'), 'Task successfully created', 201);
