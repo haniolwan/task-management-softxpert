@@ -140,7 +140,7 @@ class TaskController extends Controller
 
     public function updateStatus(UpdateTaskRequest $request, Task $task)
     {
-        if (auth()->user()->id !== $task->id)
+        if (auth()->user()->id !== $task->assignee_id)
             return $this->error('Forbidden', [], 403);
         $validated = $request->validated();
         $status = $validated['status'] ?? null;
